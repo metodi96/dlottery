@@ -1,0 +1,31 @@
+{
+  "name": "dlottery",
+  "version": "1.0.0",
+  "description": "A participating solution in the Open DeFi Hackathon https://gitcoin.co/issue/snxgrants/open-defi-hackathon/8/100025689",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.1.7",
+    "@openzeppelin/contracts": "^4.1.0",
+    "@truffle/hdwallet-provider": "^1.2.6",
+    "dotenv": "^9.0.1",
+    "truffle-assertions": "^0.9.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metodi96/dlottery.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/metodi96/dlottery/issues"
+  },
+  "homepage": "https://github.com/metodi96/dlottery#readme"
+}
