@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
@@ -7,7 +8,7 @@ import "@chainlink/contracts/src/v0.8/dev/VRFConsumerBase.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Lottery is ERC721, VRFConsumerBase {
+contract Lottery is ERC721, VRFConsumerBase, Ownable {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
 
@@ -42,7 +43,7 @@ contract Lottery is ERC721, VRFConsumerBase {
     /**
      * @dev Emitted when `firstPlace`, `secondPlace`, `thirdPlace` are awarded for a `lotteryId`.
      */
-    event WinnerAnnounced(uint256 firstPlace, uint256 secondPlace, uint256 thirdPlace, uint256 lotteryId);
+    event WinnersAnnounced(uint256 firstPlace, uint256 secondPlace, uint256 thirdPlace, uint256 lotteryId);
 
     // @notice enum that defines the three AwardClaimed event types
     enum EventType {First, Second, Third}
@@ -69,13 +70,13 @@ contract Lottery is ERC721, VRFConsumerBase {
             _VRFCoordinator, // VRF Coordinator - Rinkeby
             _LinkToken // LINK Token - Rinkeby
         )
-        ERC721("dSynLottery", "DSL")
+        ERC721("dSynthLottery", "DSL")
     {
         keyHash = _keyHash;
         fee = 0.1 * 10**18;
         sUSD = IERC20(_sUSDAddress);
-        lotteryIds = 1; 
-        lotteryIdToExpiry[lotteryIds] = block.timestamp + duration;
+        lotteryIds.increment(); 
+        lotteryIdToExpiry[lotteryIds.current()] = block.timestamp.add(duration);
     }
 
     /**
@@ -89,12 +90,14 @@ contract Lottery is ERC721, VRFConsumerBase {
         sUSD.transferFrom(msg.sender, address(this), amount);
 
         //the amount will be added to the specific lottery pool
-        lotteryIdToPool[lotteryIds] += amount;
+        lotteryIdToPool[lotteryIds.current()] = lotteryIdToPool[lotteryIds.current()].add(amount);
 
         tokenIds.increment();
         uint256 newItemId = tokenIds.current();
 
         _mint(recipient, newItemId);
+
+        return newItemId;
     }
 
     /**
@@ -109,7 +112,7 @@ contract Lottery is ERC721, VRFConsumerBase {
      */
     function announceWinners(uint256 userProvidedSeed) public onlyOwner returns (bytes32) {
         require(
-            lotteryIdToExpiry[lotteryIds] < block.timestamp,
+            lotteryIdToExpiry[lotteryIds.current()] < block.timestamp,
             "The current lottery is still running!"
         );
         require(
@@ -130,20 +133,20 @@ contract Lottery is ERC721, VRFConsumerBase {
         internal
         override
     {
-        bytes32[] randomWinners = expand(keccak256(abi.encode(randomness));
-        uint256 firstPlaceToken = add(mod(uint256(randomWinners[0]), tokenIds), 1);
-        uint256 secondPlaceToken = add(mod(uint256(randomWinners[1]), tokenIds), 1);
-        uint256 thirdPlaceToken = add(mod(uint256(randomWinners[2]), tokenIds), 1);
+        bytes32[] memory randomWinners = expand(keccak256(abi.encode(randomness)));
+        uint256 firstPlaceToken = uint256(randomWinners[0]).mod(tokenIds.current()).add(1);
+        uint256 secondPlaceToken = uint256(randomWinners[1]).mod(tokenIds.current()).add(1);
+        uint256 thirdPlaceToken = uint256(randomWinners[2]).mod(tokenIds.current()).add(1);
 
-        lotteryIdToTokenIdToFirstPlace[lotteryIds][firstPlaceToken] = true;
-        lotteryIdToTokenIdToSecondPlace[lotteryIds][secondPlaceToken] = true;
-        lotteryIdToTokenIdToThirdPlace[lotteryIds][thirdPlaceToken] = true;
+        lotteryIdToTokenIdToFirstPlace[lotteryIds.current()][firstPlaceToken] = true;
+        lotteryIdToTokenIdToSecondPlace[lotteryIds.current()][secondPlaceToken] = true;
+        lotteryIdToTokenIdToThirdPlace[lotteryIds.current()][thirdPlaceToken] = true;
 
-        emit WinnersAnnounced(firstPlaceToken, secondPlaceToken, thirdPlaceToken, lotteryIds);
+        emit WinnersAnnounced(firstPlaceToken, secondPlaceToken, thirdPlaceToken, lotteryIds.current());
         
         //as soon as the event is emitted start the next lottery
         lotteryIds.increment();
-        lotteryIdToExpiry[lotteryIds] = block.timestamp + duration;
+        lotteryIdToExpiry[lotteryIds.current()] = block.timestamp.add(duration);
     }
 
     /**
@@ -154,7 +157,7 @@ contract Lottery is ERC721, VRFConsumerBase {
         pure
         returns (bytes32[] memory expandedValues)
     {
-        expandedValues = new bytes32[3];
+        expandedValues = new bytes32[](3);
         for (uint256 i = 0; i < expandedValues.length; i++) {
             expandedValues[i] = keccak256(abi.encode(randomValue, i));
         }
@@ -181,9 +184,9 @@ contract Lottery is ERC721, VRFConsumerBase {
             "You are not the owner of the tokenId!"
         );
         uint256 balance = lotteryIdToPool[lotteryId];
-        uint256 amountToBeTransfered = div(balance, 2);
+        uint256 amountToBeTransfered = balance.div(2);
         sUSD.transfer(msg.sender, amountToBeTransfered);
-        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId] - amountToBeTransfered;
+        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId].sub(amountToBeTransfered);
         lotteryIdToTokenIdToFirstPlace[lotteryId][tokenId] = false;
 
         emit AwardClaimed(EventType.First, tokenId, lotteryId);
@@ -209,9 +212,9 @@ contract Lottery is ERC721, VRFConsumerBase {
             "You are not the owner of the tokenId!"
         );
         uint256 balance = lotteryIdToPool[lotteryId];
-        uint256 amountToBeTransfered = div(mul(balance, 35), 100);
+        uint256 amountToBeTransfered = balance.mul(35).div(100);
         sUSD.transfer(msg.sender, amountToBeTransfered);
-        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId] - amountToBeTransfered;
+        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId].sub(amountToBeTransfered);
         lotteryIdToTokenIdToSecondPlace[lotteryId][tokenId] = false;
 
         emit AwardClaimed(EventType.Second, tokenId, lotteryId);
@@ -237,9 +240,9 @@ contract Lottery is ERC721, VRFConsumerBase {
             "You are not the owner of the tokenId!"
         );
         uint256 balance = lotteryIdToPool[lotteryId];
-        uint256 amountToBeTransfered = div(mul(balance, 15), 100);
+        uint256 amountToBeTransfered = balance.mul(15).div(100);
         sUSD.transfer(msg.sender, amountToBeTransfered);
-        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId] - amountToBeTransfered;
+        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId].sub(amountToBeTransfered);
         lotteryIdToTokenIdToThirdPlace[lotteryId][tokenId] = false;
 
         emit AwardClaimed(EventType.Third, tokenId, lotteryId);

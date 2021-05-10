@@ -3,12 +3,12 @@ const path = require("path");
 require('dotenv').config()
 
 module.exports = {
-  contracts_build_directory: path.join(__dirname, "frontend/src/contracts"),
+  contracts_build_directory: path.join(__dirname, "build/contracts"),
   networks: {
     develop: {
       host: "127.0.0.1",
-      port: 7545,   
-      network_id: "*"   
+      port: 7545,
+      network_id: "*"
     },
     rinkeby: {
       provider: () => {
