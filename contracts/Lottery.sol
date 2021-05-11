@@ -36,9 +36,16 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
     mapping(uint256 => uint256) public lotteryIdToExpiry;
 
     // Mappings to check whether for a given lottery a certain token id has won a corresponding prize
-    mapping(uint256 => mapping (uint256 => bool)) lotteryIdToTokenIdToFirstPlace;
-    mapping(uint256 => mapping (uint256 => bool)) lotteryIdToTokenIdToSecondPlace;
-    mapping(uint256 => mapping (uint256 => bool)) lotteryIdToTokenIdToThirdPlace;
+    mapping(uint256 => mapping (uint256 => bool)) public lotteryIdToTokenIdToFirstPlace;
+    mapping(uint256 => mapping (uint256 => bool)) public lotteryIdToTokenIdToSecondPlace;
+    mapping(uint256 => mapping (uint256 => bool)) public lotteryIdToTokenIdToThirdPlace;
+
+    mapping(bytes32 => uint256) public requestIdToLottery;
+
+    /**  
+    * @dev Emitted when a `requestId` has been created by the `sender`
+    */
+    event VRFRequested(bytes32 indexed requestId, address indexed sender);
 
     /**
      * @dev Emitted when `firstPlace`, `secondPlace`, `thirdPlace` are awarded for a `lotteryId`.
@@ -110,7 +117,7 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
      * - the smart contract should have enough balance to cover the fee
      *
      */
-    function announceWinners(uint256 userProvidedSeed) public onlyOwner returns (bytes32) {
+    function announceWinners(uint256 userProvidedSeed) public onlyOwner {
         require(
             lotteryIdToExpiry[lotteryIds.current()] < block.timestamp,
             "The current lottery is still running!"
@@ -120,7 +127,9 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
             "Not enough LINK - fill contract with faucet"
         );
         bytes32 requestId = requestRandomness(keyHash, fee, userProvidedSeed);
-        return requestId;
+        requestIdToLottery[requestId] = lotteryIds.current();
+
+        emit VRFRequested(requestId, msg.sender);
     }
 
     /**
@@ -133,16 +142,17 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
         internal
         override
     {
+        uint256 currentLotteryId = requestIdToLottery[requestId];
         bytes32[] memory randomWinners = expand(keccak256(abi.encode(randomness)));
         uint256 firstPlaceToken = uint256(randomWinners[0]).mod(tokenIds.current()).add(1);
         uint256 secondPlaceToken = uint256(randomWinners[1]).mod(tokenIds.current()).add(1);
         uint256 thirdPlaceToken = uint256(randomWinners[2]).mod(tokenIds.current()).add(1);
 
-        lotteryIdToTokenIdToFirstPlace[lotteryIds.current()][firstPlaceToken] = true;
-        lotteryIdToTokenIdToSecondPlace[lotteryIds.current()][secondPlaceToken] = true;
-        lotteryIdToTokenIdToThirdPlace[lotteryIds.current()][thirdPlaceToken] = true;
+        lotteryIdToTokenIdToFirstPlace[currentLotteryId][firstPlaceToken] = true;
+        lotteryIdToTokenIdToSecondPlace[currentLotteryId][secondPlaceToken] = true;
+        lotteryIdToTokenIdToThirdPlace[currentLotteryId][thirdPlaceToken] = true;
 
-        emit WinnersAnnounced(firstPlaceToken, secondPlaceToken, thirdPlaceToken, lotteryIds.current());
+        emit WinnersAnnounced(firstPlaceToken, secondPlaceToken, thirdPlaceToken, currentLotteryId);
         
         //as soon as the event is emitted start the next lottery
         lotteryIds.increment();
@@ -247,4 +257,13 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
 
         emit AwardClaimed(EventType.Third, tokenId, lotteryId);
     }
+
+    /**
+     * @dev Return the current lottery id
+     *
+     */
+    function getLotteryId() public view returns(uint256) {
+        return lotteryIds.current();
+    }
+
 }
