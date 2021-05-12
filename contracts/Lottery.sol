@@ -36,16 +36,16 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
     mapping(uint256 => uint256) public lotteryIdToExpiry;
 
     // Mappings to check whether for a given lottery a certain token id has won a corresponding prize
-    mapping(uint256 => mapping (uint256 => bool)) public lotteryIdToTokenIdToFirstPlace;
-    mapping(uint256 => mapping (uint256 => bool)) public lotteryIdToTokenIdToSecondPlace;
-    mapping(uint256 => mapping (uint256 => bool)) public lotteryIdToTokenIdToThirdPlace;
+    mapping(uint256 => mapping (uint256 => bool)) private lotteryIdToTokenIdToFirstPlace;
+    mapping(uint256 => mapping (uint256 => bool)) private lotteryIdToTokenIdToSecondPlace;
+    mapping(uint256 => mapping (uint256 => bool)) private lotteryIdToTokenIdToThirdPlace;
 
     mapping(bytes32 => uint256) public requestIdToLottery;
 
     /**  
     * @dev Emitted when a `requestId` has been created by the `sender`
     */
-    event VRFRequested(bytes32 indexed requestId, address indexed sender);
+    event VRFRequested(bytes32 indexed requestId, address indexed sender, uint256 lotteryId);
 
     /**
      * @dev Emitted when `firstPlace`, `secondPlace`, `thirdPlace` are awarded for a `lotteryId`.
@@ -67,22 +67,13 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
      * are also set, since we inherit from the ERC721 contract. Furthermore, we set the `fee` to 0.1 LINK and we 
      * initialize the first lottery as soon as the contract is deployed
      */
-    constructor(
-        address _sUSDAddress,
-        address _VRFCoordinator,
-        address _LinkToken,
-        bytes32 _keyHash
-    )
-        VRFConsumerBase(
-            _VRFCoordinator, // VRF Coordinator - Rinkeby
-            _LinkToken // LINK Token - Rinkeby
-        )
+    constructor(address _sUSDAddress, address _VRFCoordinator, address _LinkToken, bytes32 _keyHash)
+        VRFConsumerBase( _VRFCoordinator, _LinkToken)
         ERC721("dSynthLottery", "DSL")
     {
         keyHash = _keyHash;
         fee = 0.1 * 10**18;
         sUSD = IERC20(_sUSDAddress);
-        lotteryIds.increment(); 
         lotteryIdToExpiry[lotteryIds.current()] = block.timestamp.add(duration);
     }
 
@@ -117,7 +108,7 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
      * - the smart contract should have enough balance to cover the fee
      *
      */
-    function announceWinners(uint256 userProvidedSeed) public onlyOwner {
+    function announceWinners(uint256 userProvidedSeed) public onlyOwner returns (bytes32) {
         require(
             lotteryIdToExpiry[lotteryIds.current()] < block.timestamp,
             "The current lottery is still running!"
@@ -129,7 +120,9 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
         bytes32 requestId = requestRandomness(keyHash, fee, userProvidedSeed);
         requestIdToLottery[requestId] = lotteryIds.current();
 
-        emit VRFRequested(requestId, msg.sender);
+        emit VRFRequested(requestId, msg.sender, requestIdToLottery[requestId]);
+
+        return requestId;
     }
 
     /**
@@ -143,7 +136,7 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
         override
     {
         uint256 currentLotteryId = requestIdToLottery[requestId];
-        bytes32[] memory randomWinners = expand(keccak256(abi.encode(randomness)));
+        bytes32[] memory randomWinners = expandVRFResponse(keccak256(abi.encode(randomness)));
         uint256 firstPlaceToken = uint256(randomWinners[0]).mod(tokenIds.current()).add(1);
         uint256 secondPlaceToken = uint256(randomWinners[1]).mod(tokenIds.current()).add(1);
         uint256 thirdPlaceToken = uint256(randomWinners[2]).mod(tokenIds.current()).add(1);
@@ -162,7 +155,7 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
     /**
      * @dev A function to expand the random result received from the VRF response into 3 values to determine the 3 prize winners
      */
-    function expand(bytes32 randomValue)
+    function expandVRFResponse(bytes32 randomValue)
         private
         pure
         returns (bytes32[] memory expandedValues)
@@ -196,7 +189,7 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
         uint256 balance = lotteryIdToPool[lotteryId];
         uint256 amountToBeTransfered = balance.div(2);
         sUSD.transfer(msg.sender, amountToBeTransfered);
-        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId].sub(amountToBeTransfered);
+        
         lotteryIdToTokenIdToFirstPlace[lotteryId][tokenId] = false;
 
         emit AwardClaimed(EventType.First, tokenId, lotteryId);
@@ -224,7 +217,6 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
         uint256 balance = lotteryIdToPool[lotteryId];
         uint256 amountToBeTransfered = balance.mul(35).div(100);
         sUSD.transfer(msg.sender, amountToBeTransfered);
-        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId].sub(amountToBeTransfered);
         lotteryIdToTokenIdToSecondPlace[lotteryId][tokenId] = false;
 
         emit AwardClaimed(EventType.Second, tokenId, lotteryId);
@@ -252,10 +244,17 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
         uint256 balance = lotteryIdToPool[lotteryId];
         uint256 amountToBeTransfered = balance.mul(15).div(100);
         sUSD.transfer(msg.sender, amountToBeTransfered);
-        lotteryIdToPool[lotteryId] = lotteryIdToPool[lotteryId].sub(amountToBeTransfered);
         lotteryIdToTokenIdToThirdPlace[lotteryId][tokenId] = false;
 
         emit AwardClaimed(EventType.Third, tokenId, lotteryId);
+    }
+
+    /**
+     * @dev Return the current token id
+     *
+     */
+    function getTokenId() public view returns(uint256) {
+        return tokenIds.current();
     }
 
     /**
@@ -264,6 +263,30 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
      */
     function getLotteryId() public view returns(uint256) {
         return lotteryIds.current();
+    }
+
+    /**
+     * @dev Return whether the `tokenId` has won first place for `lotteryId`
+     *
+     */
+    function getLotteryIdToFirstPlace(uint256 lotteryId, uint256 tokenId) public view returns(bool) {
+        return lotteryIdToTokenIdToFirstPlace[lotteryId][tokenId];
+    }
+
+    /**
+     * @dev Return whether the `tokenId` has won second place for `lotteryId`
+     *
+     */
+    function getLotteryIdToSecondPlace(uint256 lotteryId, uint256 tokenId) public view returns(bool) {
+        return lotteryIdToTokenIdToSecondPlace[lotteryId][tokenId];
+    }
+
+    /**
+     * @dev Return whether the `tokenId` has won third place for `lotteryId`
+     *
+     */
+    function getLotteryIdToThirdPlace(uint256 lotteryId, uint256 tokenId) public view returns(bool) {
+        return lotteryIdToTokenIdToThirdPlace[lotteryId][tokenId];
     }
 
 }
