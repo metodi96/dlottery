@@ -155,9 +155,7 @@ contract('Lottery', ([owner, participantOne, participantTwo, participantThree, p
             assert.equal(transaction.logs[0].args.requestId, requestId, `Should be the request id: ${requestId}.`);
             assert.equal(transaction.logs[0].args.sender, owner, 'Should be the owner that is calling this function.');
             assert.equal(transaction.logs[0].args.lotteryId, lotteryId.toString(), 'Should be the 0 lottery id.');
-
-            //const randomNumber = Math.floor(Math.random() * parseInt(totalTokens.toString())) + 1
-            // let requestId = await randomNumberConsumer.lastRequestId({ from: defaultAccount })
+            
             await vrfCoordinatorMock.callBackWithRandomness(requestId, '2', lottery.address, { from: owner })
 
             const randomFirstPlace = await lottery.getLotteryIdToFirstPlace(lotteryId.toString(), '9', { from: owner })
