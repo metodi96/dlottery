@@ -54,6 +54,11 @@ contract('Lottery', ([owner, participantOne, participantTwo, participantThree, p
     })
 
     describe('Buy a ticket', () => {
+        it('it reverts if sUSD amount < 1', async () => {
+            await expectRevert.unspecified(
+                lottery.buyTicket(participantOne, convertTokensToWei('0.99'), { from: participantOne })
+            )
+        })
 
         it('The lottery should have no sUSD balance.', async () => {
             const balanceOfLottery = await sUSD.balanceOf(lottery.address)
@@ -73,13 +78,13 @@ contract('Lottery', ([owner, participantOne, participantTwo, participantThree, p
 
         it('Returns the id of the new token but doesn\'t actually buy the ticket', async () => {
             await sUSD.approve(lottery.address, convertTokensToWei('1'), { from: participantOne });
-            const newTokenId = await lottery.buyTicket.call(participantOne, { from: participantOne })
+            const newTokenId = await lottery.buyTicket.call(participantOne, convertTokensToWei('1'), { from: participantOne })
             assert.equal(newTokenId, 1, 'The new token id should be 1')
         })
 
         it('Buys a ticket successfully', async () => {
             await sUSD.approve(lottery.address, convertTokensToWei('1'), { from: participantOne });
-            const result = await lottery.buyTicket(participantOne, { from: participantOne })
+            const result = await lottery.buyTicket(participantOne, convertTokensToWei('1'), { from: participantOne })
             assert.equal(result.logs.length, 1, 'Should trigger one event.');
             assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
             assert.equal(result.logs[0].args.from, 0x0000000000000000000000000000000000000000, 'Should be the 0x0000000000000000000000000000000000000000 address.');
@@ -111,24 +116,24 @@ contract('Lottery', ([owner, participantOne, participantTwo, participantThree, p
             await sUSD.approve(lottery.address, convertTokensToWei('3'), { from: participantThree });
             await sUSD.approve(lottery.address, convertTokensToWei('5'), { from: participantFour });
             await sUSD.approve(lottery.address, convertTokensToWei('6'), { from: participantFive });
-            await lottery.buyTicket(participantTwo, { from: participantTwo })
-            await lottery.buyTicket(participantTwo, { from: participantTwo })
-            await lottery.buyTicket(participantTwo, { from: participantTwo })
-            await lottery.buyTicket(participantTwo, { from: participantTwo })
-            await lottery.buyTicket(participantThree, { from: participantThree })
-            await lottery.buyTicket(participantThree, { from: participantThree })
-            await lottery.buyTicket(participantThree, { from: participantThree })
-            await lottery.buyTicket(participantFour, { from: participantFour })
-            await lottery.buyTicket(participantFour, { from: participantFour })
-            await lottery.buyTicket(participantFour, { from: participantFour })
-            await lottery.buyTicket(participantFour, { from: participantFour })
-            await lottery.buyTicket(participantFour, { from: participantFour })
-            await lottery.buyTicket(participantFive, { from: participantFive })
-            await lottery.buyTicket(participantFive, { from: participantFive })
-            await lottery.buyTicket(participantFive, { from: participantFive })
-            await lottery.buyTicket(participantFive, { from: participantFive })
-            await lottery.buyTicket(participantFive, { from: participantFive })
-            await lottery.buyTicket(participantFive, { from: participantFive })
+            await lottery.buyTicket(participantTwo, convertTokensToWei('1'), { from: participantTwo })
+            await lottery.buyTicket(participantTwo, convertTokensToWei('1'), { from: participantTwo })
+            await lottery.buyTicket(participantTwo, convertTokensToWei('1'), { from: participantTwo })
+            await lottery.buyTicket(participantTwo, convertTokensToWei('1'), { from: participantTwo })
+            await lottery.buyTicket(participantThree, convertTokensToWei('1'), { from: participantThree })
+            await lottery.buyTicket(participantThree, convertTokensToWei('1'), { from: participantThree })
+            await lottery.buyTicket(participantThree, convertTokensToWei('1'), { from: participantThree })
+            await lottery.buyTicket(participantFour, convertTokensToWei('1'), { from: participantFour })
+            await lottery.buyTicket(participantFour, convertTokensToWei('1'), { from: participantFour })
+            await lottery.buyTicket(participantFour, convertTokensToWei('1'), { from: participantFour })
+            await lottery.buyTicket(participantFour, convertTokensToWei('1'), { from: participantFour })
+            await lottery.buyTicket(participantFour, convertTokensToWei('1'), { from: participantFour })
+            await lottery.buyTicket(participantFive, convertTokensToWei('1'), { from: participantFive })
+            await lottery.buyTicket(participantFive, convertTokensToWei('1'), { from: participantFive })
+            await lottery.buyTicket(participantFive, convertTokensToWei('1'), { from: participantFive })
+            await lottery.buyTicket(participantFive, convertTokensToWei('1'), { from: participantFive })
+            await lottery.buyTicket(participantFive, convertTokensToWei('1'), { from: participantFive })
+            await lottery.buyTicket(participantFive, convertTokensToWei('1'), { from: participantFive })
         })
 
         it('it reverts without LINK', async () => {
@@ -155,7 +160,7 @@ contract('Lottery', ([owner, participantOne, participantTwo, participantThree, p
             assert.equal(transaction.logs[0].args.requestId, requestId, `Should be the request id: ${requestId}.`);
             assert.equal(transaction.logs[0].args.sender, owner, 'Should be the owner that is calling this function.');
             assert.equal(transaction.logs[0].args.lotteryId, lotteryId.toString(), 'Should be the 0 lottery id.');
-            
+
             await vrfCoordinatorMock.callBackWithRandomness(requestId, '2', lottery.address, { from: owner })
 
             const randomFirstPlace = await lottery.getLotteryIdToFirstPlace(lotteryId.toString(), '9', { from: owner })

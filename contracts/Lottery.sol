@@ -78,17 +78,17 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
     }
 
     /**
-     * @dev buys a ticket for a `recipient` and transfers 1 sUSD to the smart contract from the sender's balance to purchase the ticket
+     * @dev buys a ticket for a `recipient` and transfers `sUSDAmount` to the smart contract from the sender's balance to purchase the ticket
      *
      * Emits a {Transfer} event - comes from the ERC721 smart contract.
      */
-    function buyTicket(address recipient) public returns (uint256) {
-        uint256 amount = 1000000000000000000;
+    function buyTicket(address recipient, uint256 sUSDAmount) public returns (uint256) {
+        require(sUSDAmount >= 1000000000000000000);
         //transfer 1 sUSD to the lottery smart contract
-        sUSD.transferFrom(msg.sender, address(this), amount);
+        sUSD.transferFrom(msg.sender, address(this), sUSDAmount);
 
-        //the amount will be added to the specific lottery pool
-        lotteryIdToPool[lotteryIds.current()] = lotteryIdToPool[lotteryIds.current()].add(amount);
+        //the sUSDAmount will be added to the specific lottery pool
+        lotteryIdToPool[lotteryIds.current()] = lotteryIdToPool[lotteryIds.current()].add(sUSDAmount);
 
         tokenIds.increment();
         uint256 newItemId = tokenIds.current();
@@ -189,7 +189,7 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
         uint256 balance = lotteryIdToPool[lotteryId];
         uint256 amountToBeTransfered = balance.div(2);
         sUSD.transfer(msg.sender, amountToBeTransfered);
-        
+
         lotteryIdToTokenIdToFirstPlace[lotteryId][tokenId] = false;
 
         emit AwardClaimed(EventType.First, tokenId, lotteryId);
