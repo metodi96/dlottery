@@ -21,7 +21,7 @@ contract Lottery is ERC721, VRFConsumerBase, Ownable {
     // Counter for lottery ids - used for the winners
     Counters.Counter private lotteryIds;
 
-    uint256 private duration = 1 weeks;
+    uint256 private duration = 6 hours;
 
     // Used to identify the proper oracle
     bytes32 internal keyHash;
