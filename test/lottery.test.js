@@ -136,7 +136,13 @@ contract('Lottery', ([owner, participantOne, participantTwo, participantThree, p
             await lottery.buyTicket(participantFive, convertTokensToWei('1'), { from: participantFive })
         })
 
-        it('it reverts without LINK', async () => {
+        it('Reverts if someone other than the owner calls the function.', async () => {
+            await expectRevert.unspecified(
+                lottery.announceWinners(seed, { from: participantFour })
+            )
+        })
+
+        it('Reverts without LINK', async () => {
             await expectRevert.unspecified(
                 lottery.announceWinners(seed, { from: owner })
             )
