@@ -1,5 +1,6 @@
 # dSynthLottery (Synthetix Lottery)
 A participating solution in the Open DeFi Hackathon https://gitcoin.co/issue/snxgrants/open-defi-hackathon/8/100025689
+The current lottery smart contract can be found on the Kovan testnet: https://kovan.etherscan.io/address/0x5178d423d878b6fac363426075cEbBE33eC19147#contracts
 
 ### Design:
 
