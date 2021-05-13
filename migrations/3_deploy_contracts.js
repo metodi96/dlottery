@@ -20,5 +20,6 @@ module.exports = async (deployer, network, [owner]) => {
         deployer.deploy(Lottery, KOVAN_SUSD, KOVAN_VRF_COORDINATOR, KOVAN_LINK_TOKEN, KOVAN_KEYHASH)
         //contract address: 0xABed09633E407e42F7CB030c552E49d8F22122fA
         //contract address (5min lottery): 0x8e75116B9b2DB58e2e6f8B74987b6975a65f83B4
+        //contract address (6h lottery duration): 0x5178d423d878b6fac363426075cEbBE33eC19147
     }
 }
