@@ -14,14 +14,11 @@
     "truffle-plugin-verify": "^0.5.8"
   },
   "devDependencies": {
-    "@openzeppelin/test-environment": "^0.1.9",
     "@openzeppelin/test-helpers": "^0.5.11",
-    "chai": "^4.3.4",
-    "ganache-time-traveler": "^1.0.15",
-    "mocha": "^8.4.0"
+    "ganache-time-traveler": "^1.0.15"
   },
   "scripts": {
-    "test": "mocha --exit --recursive --timeout 10000"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
