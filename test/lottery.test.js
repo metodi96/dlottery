@@ -1,6 +1,5 @@
 const { expect } = require('chai')
 const { expectRevert } = require('@openzeppelin/test-helpers')
-const abi = require('ethereumjs-abi')
 const { convertTokensToWei } = require('../utils/tokens')
 const Lottery = artifacts.require('Lottery')
 const SUSDMock = artifacts.require('SUSDMock')
